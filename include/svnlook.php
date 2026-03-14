@@ -480,6 +480,8 @@ function _listSort($e1, $e2) {
 
 	$file1 = $e1->file;
 	$file2 = $e2->file;
+	$committime1 = $e1->committime;
+	$committime2 = $e2->committime;
 	$isDir1 = ($file1[strlen($file1) - 1] == '/');
 	$isDir2 = ($file2[strlen($file2) - 1] == '/');
 
@@ -491,7 +493,13 @@ function _listSort($e1, $e2) {
 	if ($isDir1) $file1 = substr($file1, 0, -1);
 	if ($isDir2) $file2 = substr($file2, 0, -1);
 
-	return strnatcasecmp($file1, $file2);
+	switch($config->sortByField()) {
+		case 'filename':
+			return strnatcasecmp($file1, $file2);
+		case 'date':
+			if ($committime1 == $committime2) return 0;
+			return ($committime1 < $committime2) ? -1 : 1;
+	}
 }
 
 // }}}
