@@ -646,6 +646,8 @@ class WebSvnConfig {
 	var $flatIndex = true;
 	var $openTree = false;
 	var $alphabetic = false;
+	var $sortByField = 'filename';
+	var $validSortByFields = array( 'filename', 'date' );
 	var $showLastModInIndex = true;
 	var $showLastModInListing = true;
 	var $showAgeInsteadOfDate = true;
@@ -1611,6 +1613,19 @@ class WebSvnConfig {
 
 	function isAlphabeticOrder() {
 		return $this->alphabetic;
+	}
+
+	function setSortByField($sortByField) {
+		if (in_array($sortByField, $this->validSortByFields)) {
+			$this->sortByField = $sortByField;
+		} else {
+			echo 'Setting default sort by field to an invalid value "'.$sortByField.'"';
+			exit;
+		}
+	}
+
+	function sortByField() {
+		return $this->sortByField;
 	}
 
 	function showLastModInIndex() {

@@ -170,6 +170,12 @@ $config->addTemplatePath($locwebsvnreal.'/templates/Elegant/');
 
 // $config->setAlphabeticOrder(true);
 
+// By default, WebSVN entries are alphabetically sorted, you may choose to sort
+// by commit date.
+
+// $config->setSortByField('filename');
+// $config->setSortByField('date');
+
 // By default, WebSVN loads parent path directories and then on user click other,
 // This options loads the entire directory in one go and allows to browse without delay.
 // By default all will be collapsed to root directory and can be expanded.
