@@ -648,6 +648,8 @@ class WebSvnConfig {
 	var $alphabetic = false;
 	var $sortByField = 'filename';
 	var $validSortByFields = array( 'filename', 'date' );
+	var $sortOrder = 'asc';
+	var $validSortOrders = array( 'asc', 'desc' );
 	var $showLastModInIndex = true;
 	var $showLastModInListing = true;
 	var $showAgeInsteadOfDate = true;
@@ -1619,13 +1621,26 @@ class WebSvnConfig {
 		if (in_array($sortByField, $this->validSortByFields)) {
 			$this->sortByField = $sortByField;
 		} else {
-			echo 'Setting default sort by field to an invalid value "'.$sortByField.'"';
+			echo 'Setting sort by field to an invalid value "'.$sortByField.'"';
 			exit;
 		}
 	}
 
 	function sortByField() {
 		return $this->sortByField;
+	}
+
+	function setSortOrder($sortOrder) {
+		if (in_array($sortOrder, $this->validSortOrders)) {
+			$this->sortOrder = $sortOrder;
+		} else {
+			echo 'Setting sort order to an invalid value "'.$sortOrder.'"';
+			exit;
+		}
+	}
+
+	function sortOrder() {
+		return $this->sortOrder;
 	}
 
 	function showLastModInIndex() {

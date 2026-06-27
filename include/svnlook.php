@@ -493,12 +493,12 @@ function _listSort($e1, $e2) {
 	if ($isDir1) $file1 = substr($file1, 0, -1);
 	if ($isDir2) $file2 = substr($file2, 0, -1);
 
+	$order = ($config->sortOrder() == 'asc') ? 1 : -1;
 	switch($config->sortByField()) {
 		case 'filename':
-			return strnatcasecmp($file1, $file2);
+			return strnatcasecmp($file1, $file2) * $order;
 		case 'date':
-			if ($committime1 == $committime2) return 0;
-			return ($committime1 < $committime2) ? -1 : 1;
+			return ($committime1 <=> $committime2) * $order;
 	}
 }
 

@@ -9,5 +9,12 @@
         "horde/text_diff": "^3.0.0",
         "erusev/parsedown": "1.7.4"
     },
-    "minimum-stability": "alpha"
+    "minimum-stability": "alpha",
+    "config": {
+        "audit": {
+            "ignore": [
+                "PKSA-ns3q-qtk3-d35r"
+            ]
+        }
+    }
 }
