@@ -540,7 +540,13 @@ class Repository {
 
 	// {{{ Authorization
 
+	// Deprecated alias for setAccessFile(), kept for backwards compatibility.
 	function useAccessFile($file) {
+		trigger_error('useAccessFile() is deprecated, use setAccessFile() instead', E_USER_DEPRECATED);
+		$this->setAccessFile($file);
+	}
+
+	function setAccessFile($file) {
 		if (is_readable($file)) {
 			if ($this->authz === null) {
 				$this->authz = new Authorization();
@@ -662,8 +668,6 @@ class WebSvnConfig {
 	var $useEnscriptBefore_1_6_3 = false;
 	var $useGeshi = false;
 	var $geshiScript = 'geshi.php';
-	var $useParsedown = false;
-	var $parsedownScript = 'Parsedown.php';
 	var $inlineMimeTypes = array();
 	var $allowDownload = false;
 	var $tempDir = '';
@@ -678,9 +682,9 @@ class WebSvnConfig {
 	var $bugtraq = false;
 	var $bugtraqProperties = null;
 	var $authz = null;
+	var $authzUsernameCase = null;
+	var $validAuthzUsernameCases = array( 'upper', 'lower' );
 	var $blockRobots = false;
-
-	var $loadAllRepos = false;
 
 	var $templatePaths = array();
 	var $userTemplate = false;
@@ -893,29 +897,6 @@ class WebSvnConfig {
 
 	// }}}
 
-	// {{{ Parsedown
-
-	function setParsedownPath($path) {
-		$this->_setPath($this->parsedownScript, $path, 'Parsedown.php');
-	}
-
-	function getParsedownScript() {
-		return $this->parsedownScript;
-	}
-
-	// useParsedown
-	//
-	// Use Parsedown to render README.md or readme.md
-	function useParsedown() {
-		$this->useParsedown = true;
-	}
-
-	function getUseParsedown() {
-		return $this->useParsedown;
-	}
-
-	// }}}
-
 	// {{{ Inline MIME Types
 
 	// inlineMimeTypes
@@ -1092,7 +1073,7 @@ class WebSvnConfig {
 
 	function findException($path, $exceptions) {
 		foreach ($exceptions as $key => $exc) {
-			if (strncmp($exc, $path, strlen($exc)) == 0) {
+			if (str_starts_with($path, $exc)) {
 				return true;
 			}
 		}
@@ -1135,7 +1116,7 @@ class WebSvnConfig {
 				$path = '/'.$path;
 			}
 
-			if (substr($url, -5) == 'index') {
+			if (str_ends_with($url, 'index')) {
 				$url = substr($url, 0, -5).$this->multiViewsIndex;
 			}
 
@@ -1547,7 +1528,13 @@ class WebSvnConfig {
 		return $this->ignoreWebSVNContentTypes;
 	}
 
+	// Deprecated alias for setAccessFile(), kept for backwards compatibility.
 	function useAccessFile($file, $myrep = 0) {
+		trigger_error('useAccessFile() is deprecated, use setAccessFile() instead', E_USER_DEPRECATED);
+		$this->setAccessFile($file, $myrep);
+	}
+
+	function setAccessFile($file, $myrep = 0) {
 		if (empty($myrep)) {
 			if (is_readable($file)) {
 				if ($this->authz === null) {
@@ -1560,8 +1547,26 @@ class WebSvnConfig {
 			}
 		} else {
 			$repo =& $this->findRepository($myrep);
-			$repo->useAccessFile($file);
+			$repo->setAccessFile($file);
 		}
+	}
+
+	// mod_authz_svn's "AuthzForceUsernameCase" folds the username's case before checking it against
+	// the authz file, but only for its own authorization decision: it never touches the underlying
+	// REMOTE_USER value, so WebSVN (running as a separate script) always sees the unconverted
+	// username and has no way to detect that mod_authz_svn is folding case for its own purposes.
+	// Set to 'upper' or 'lower' to apply the equivalent conversion before WebSVN checks access itself.
+	function setAuthzUsernameCase($case) {
+		if (in_array($case, $this->validAuthzUsernameCases)) {
+			$this->authzUsernameCase = $case;
+		} else {
+			echo 'Setting authz username case to an invalid value "'.$case.'"';
+			exit;
+		}
+	}
+
+	function getAuthzUsernameCase() {
+		return $this->authzUsernameCase;
 	}
 
 	function &getAuthz() {
@@ -1601,12 +1606,16 @@ class WebSvnConfig {
 		return $this->openTree;
 	}
 
+	// Removed: loading and rendering an entire repository tree in one page was too heavy (a single
+	// "svn list -R" call per page view, regardless of how much of the tree was ever expanded) and
+	// didn't work correctly with either MultiViews or an access file that restricts an ancestor
+	// directory. Kept as a no-op so existing config.php files calling this don't break outright.
 	function setLoadAllRepos($flag) {
-		$this->loadAllRepos = $flag;
+		trigger_error('setLoadAllRepos() no longer has any effect; the "load all repos" feature has been removed', E_USER_DEPRECATED);
 	}
 
 	function showLoadAllRepos() {
-		return $this->loadAllRepos;
+		return false;
 	}
 
 	function setAlphabeticOrder($flag) {

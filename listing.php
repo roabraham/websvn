@@ -103,8 +103,8 @@ function showDirFiles($svnrep, $subs, $level, $limit, $rev, $peg, $listing, $ind
 			$listvar['revision'] = $rev;
 			$listvar['revurl'] = $config->getURL($rep, $parentPath, 'revision').'rev='.$rev.'&amp;isdir=1';
 			global $vars;
-			$listvar['date'] = $vars['date'];
-			$listvar['age'] = datetimeFormatDuration(time() - strtotime($vars['date']), true, true);
+			$listvar['date'] = $vars['date'] ?? '';
+			$listvar['age'] = $listvar['date'] ? datetimeFormatDuration(time() - strtotime($listvar['date']), true, true) : '';
 			$index++;
 		}
 	}
@@ -132,106 +132,114 @@ function showDirFiles($svnrep, $subs, $level, $limit, $rev, $peg, $listing, $ind
 		$access = ($isDir)	? $rep->hasReadAccess($path.$file, false)
 							: $accessToThisDir;
 
-		if (!$access)
+		// A directory on the way down to the directory being browsed must still be descended
+		// into even if it itself isn't readable, since a deeper descendant might have its own
+		// explicit access grant. Subversion's own path-based authz allows exactly this kind of
+		// readable island inside an otherwise restricted subtree, so WebSVN's tree view needs
+		// to tolerate it too instead of aborting the walk on the first denied ancestor.
+		// @todo remove the alternate check with htmlentities when assured that there are not side effects
+		$isNextPathSegment = $isDir && ($level != $limit) && isset($subs[$level + 1]) &&
+			(!strcmp($subs[$level + 1].'/', $file) || !strcmp(htmlentities($subs[$level + 1], ENT_QUOTES).'/', htmlentities($file, ENT_QUOTES)));
+
+		if (!$access && !$isNextPathSegment)
 		{
 			continue;
 		}
 
-		$listvar = &$listing[$index];
-		$listvar['rowparity'] = $index % 2;
-
-		if ($isDir)
+		if ($access)
 		{
-			$openDir = isset($subs[$level + 1]) && (!strcmp($subs[$level + 1].'/', $file) || !strcmp($subs[$level + 1], $file));
-			$listvar['filetype'] = ($openDir) ? 'diropen' : 'dir';
-		}
-		else
-		{
-			$openDir = false;
-			$listvar['filetype'] = strtolower(strrchr($file, '.'));
-		}
-
-		$listvar['isDir'] = $isDir;
-		$listvar['openDir'] = $openDir;
-		$listvar['level'] = ($treeview) ? $level : 0;
-		$listvar['node'] = 0; // t-node
-		$listvar['path'] = str_replace('%2F', '/', rawurlencode($path.$file));
-		$listvar['filename'] = escape($file);
-
-		if ($isDir)
-		{
-			$listvar['fileurl'] = urlForPath($path.$file, $passRevString);
-		}
-		else
-		{
-			$listvar['fileurl'] = urlForPath($path.$file, createDifferentRevAndPegString($passrev, $peg));
-		}
-
-		$listvar['filelink'] = '<a href="'.$listvar['fileurl'].'">'.$listvar['filename'].'</a>';
-
-		if ($isDir)
-		{
-			$listvar['logurl'] = $config->getURL($rep, $path.$file, 'log').$isDirString.$passRevString;
-		}
-		else
-		{
-			$listvar['logurl'] = $config->getURL($rep, $path.$file, 'log').$isDirString.createDifferentRevAndPegString($passrev, $peg);
-		}
-
-		if ($treeview)
-		{
-			$listvar['compare_box'] = '<input type="checkbox" name="compare[]" value="'.escape($path.$file).'@'.$passrev.'" onclick="enforceOnlyTwoChecked(this)" />';
-		}
-
-		if ($config->showLastModInListing())
-		{
-			$listvar['committime'] = $entry->committime;
-			$listvar['revision'] = $entry->rev;
-			$listvar['author'] = $entry->author;
-			$listvar['age'] = $entry->age;
-			$listvar['date'] = $entry->date;
-			$listvar['revurl'] = $config->getURL($rep, $path.$file, 'revision').$isDirString.createRevAndPegString($entry->rev, $peg ? $peg : $rev);
-		}
-
-		if ($rep->isDownloadAllowed($path.$file))
-		{
-			$downloadurl = $config->getURL($rep, $path.$file, 'dl').$isDirString.$downloadRevAndPeg;
+			$listvar = &$listing[$index];
+			$listvar['rowparity'] = $index % 2;
 
 			if ($isDir)
 			{
-				$listvar['downloadurl'] = $downloadurl;
-				$listvar['downloadplainurl'] = '';
+				$openDir = isset($subs[$level + 1]) && (!strcmp($subs[$level + 1].'/', $file) || !strcmp($subs[$level + 1], $file));
+				$listvar['filetype'] = ($openDir) ? 'diropen' : 'dir';
 			}
 			else
 			{
-				$listvar['downloadplainurl'] = $downloadurl;
+				$openDir = false;
+				$listvar['filetype'] = strtolower(strrchr($file, '.'));
+			}
+
+			$listvar['isDir'] = $isDir;
+			$listvar['openDir'] = $openDir;
+			$listvar['level'] = ($treeview) ? $level : 0;
+			$listvar['node'] = 0; // t-node
+			$listvar['path'] = str_replace('%2F', '/', rawurlencode($path.$file));
+			$listvar['filename'] = escape($file);
+
+			if ($isDir)
+			{
+				$listvar['fileurl'] = urlForPath($path.$file, $passRevString);
+			}
+			else
+			{
+				$listvar['fileurl'] = urlForPath($path.$file, createDifferentRevAndPegString($passrev, $peg));
+			}
+
+			$listvar['filelink'] = '<a href="'.$listvar['fileurl'].'">'.$listvar['filename'].'</a>';
+
+			if ($isDir)
+			{
+				$listvar['logurl'] = $config->getURL($rep, $path.$file, 'log').$isDirString.$passRevString;
+			}
+			else
+			{
+				$listvar['logurl'] = $config->getURL($rep, $path.$file, 'log').$isDirString.createDifferentRevAndPegString($passrev, $peg);
+			}
+
+			if ($treeview)
+			{
+				$listvar['compare_box'] = '<input type="checkbox" name="compare[]" value="'.escape($path.$file).'@'.$passrev.'" onclick="enforceOnlyTwoChecked(this)" />';
+			}
+
+			if ($config->showLastModInListing())
+			{
+				$listvar['committime'] = $entry->committime;
+				$listvar['revision'] = $entry->rev;
+				$listvar['author'] = $entry->author;
+				$listvar['age'] = $entry->age;
+				$listvar['date'] = $entry->date;
+				$listvar['revurl'] = $config->getURL($rep, $path.$file, 'revision').$isDirString.createRevAndPegString($entry->rev, $peg ? $peg : $rev);
+			}
+
+			if ($rep->isDownloadAllowed($path.$file))
+			{
+				$downloadurl = $config->getURL($rep, $path.$file, 'dl').$isDirString.$downloadRevAndPeg;
+
+				if ($isDir)
+				{
+					$listvar['downloadurl'] = $downloadurl;
+					$listvar['downloadplainurl'] = '';
+				}
+				else
+				{
+					$listvar['downloadplainurl'] = $downloadurl;
+					$listvar['downloadurl'] = '';
+				}
+			}
+			else
+			{
+				$listvar['downloadplainurl'] = '';
 				$listvar['downloadurl'] = '';
 			}
-		}
-		else
-		{
-			$listvar['downloadplainurl'] = '';
-			$listvar['downloadurl'] = '';
-		}
 
-		if ($rep->isRssEnabled())
-		{
-			// RSS should always point to the latest revision, so don't include rev
-			$listvar['rssurl'] = $config->getURL($rep, $path.$file, 'rss').$isDirString.createRevAndPegString('', $peg);
-		}
-
-		$loop++;
-		$index++;
-		$last_index = $index;
-
-		if ($isDir && ($level != $limit))
-		{
-			// @todo remove the alternate check with htmlentities when assured that there are not side effects
-			if (isset($subs[$level + 1]) && (!strcmp($subs[$level + 1].'/', $file) || !strcmp(htmlentities($subs[$level + 1], ENT_QUOTES).'/', htmlentities($file))))
+			if ($rep->isRssEnabled())
 			{
-				$listing = showDirFiles($svnrep, $subs, $level + 1, $limit, $rev, $peg, $listing, $index);
-				$index = count($listing);
+				// RSS should always point to the latest revision, so don't include rev
+				$listvar['rssurl'] = $config->getURL($rep, $path.$file, 'rss').$isDirString.createRevAndPegString('', $peg);
 			}
+
+			$loop++;
+			$index++;
+			$last_index = $index;
+		}
+
+		if ($isNextPathSegment)
+		{
+			$listing = showDirFiles($svnrep, $subs, $level + 1, $limit, $rev, $peg, $listing, $index);
+			$index = count($listing);
 		}
 	}
 
@@ -244,200 +252,9 @@ function showDirFiles($svnrep, $subs, $level, $limit, $rev, $peg, $listing, $ind
 	return $listing;
 }
 
-function showAllDirFiles($svnrep, $path, $rev, $peg, $listing, $index, $treeView = true)
-{
-	global $config, $lang, $rep, $passrev, $peg, $passRevString;
-
-	// List each file in the current directory
-	$loop = 0;
-	$last_index = 0;
-	$accessToThisDir = $rep->hasReadAccess($path, false);
-
-	// If using flat view and not at the root, create a '..' entry at the top.
-	if (!$treeView && count($subs) > 2)
-	{
-		$parentPath = $subs;
-		unset($parentPath[count($parentPath) - 2]);
-		$parentPath = implode('/', $parentPath);
-
-		if ($rep->hasReadAccess($parentPath, false))
-		{
-			$listvar = &$listing[$index];
-			$listvar['rowparity'] = $index % 2;
-			$listvar['path'] = str_replace('%2F', '/', rawurlencode($parentPath));
-			$listvar['filetype'] = 'dir';
-			$listvar['filename'] = '..';
-			$listvar['fileurl'] = urlForPath($parentPath, $passRevString);
-			$listvar['filelink'] = '<a href="'.$listvar['fileurl'].'">'.$listvar['filename'].'</a>';
-			$listvar['level'] = 0;
-			$listvar['node'] = 0; // t-node
-			$listvar['revision'] = $rev;
-			$listvar['revurl'] = $config->getURL($rep, $parentPath, 'revision').'rev='.$rev.'&amp;isdir=1';
-			global $vars;
-			$listvar['date'] = $vars['date'];
-			$listvar['age'] = datetimeFormatDuration(time() - strtotime($vars['date']), true, true);
-			$index++;
-		}
-	}
-
-	$openDir = false;
-	$logList = $svnrep->getList($path, $rev, $peg);
-
-	if (!$logList)
-	{
-		return $listing;
-	}
-
-	$downloadRevAndPeg = createRevAndPegString($rev, $peg ? $peg : $rev);
-
-	foreach ($logList->entries as $entry)
-	{
-		$isDir = $entry->isdir;
-
-		$file = $entry->file;
-		$isDirString = ($isDir) ? 'isdir=1&amp;' : '';
-
-		// Only list files/directories that are not designated as off-limits
-		$access = ($isDir)	? $rep->hasReadAccess($path.$file, false)
-							: $accessToThisDir;
-
-		if (!$access)
-		{
-			continue;
-		}
-
-		$listvar = &$listing[$index];
-		$listvar['rowparity'] = $index % 2;
-
-		if ($isDir)
-		{
-			$listvar['filetype'] = 'dir';
-			$openDir = true;
-		}
-		else
-		{
-			$listvar['filetype'] = strtolower(strrchr($file, '.'));
-			$openDir = false;
-		}
-
-		$listvar['isDir'] = $isDir;
-		$listvar['openDir'] = $openDir;
-		$listvar['path'] = str_replace('%2F', '/', rawurlencode($path.$file));
-		$tempelements = explode('/',$file);
-
-		if ($tempelements[count($tempelements)-1] === "")
-		{
-			$lastindexfile = count($tempelements)-1 - 1;
-			$listvar['node'] = $lastindexfile; // t-node
-			$listvar['level'] = ($treeView) ? $lastindexfile : 0;
-			$listvar['filename'] = escape($tempelements[$lastindexfile]);
-			$listvar['classname'] = '';
-
-			for ($n = 0; $n < $lastindexfile; ++$n)
-			{
-				$listvar['last_i_node'][$n]	= false;
-				$listvar['classname']		= $listvar['classname'].$tempelements[$n].'/';
-			}
-
-			$listvar['classname'] = $listvar['classname'].$tempelements[$lastindexfile];
-			$listvar['last_i_node'][$lastindexfile] = true;
-		}
-		else
-		{
-			$lastindexfile = count($tempelements)-1;
-			$listvar['node'] = $lastindexfile; // t-node
-			$listvar['level'] = ($treeView) ? $lastindexfile : 0;
-			$listvar['filename'] = escape($tempelements[$lastindexfile]);
-			$listvar['classname'] = '';
-
-			for ($n=0; $n < $lastindexfile; ++$n)
-			{
-				$listvar['last_i_node'][$n]	= false;
-				$listvar['classname']		= $listvar['classname'].$tempelements[$n].'/';
-			}
-
-			$listvar['last_i_node'][$lastindexfile] = true;
-		}
-
-		if ($isDir)
-		{
-			$listvar['fileurl'] = urlForPath($path.$file, $passRevString);
-		}
-		else
-		{
-			$listvar['fileurl'] = urlForPath($path.$file, createDifferentRevAndPegString($passrev, $peg));
-		}
-
-		$listvar['filelink'] = '<a href="'.$listvar['fileurl'].'">'.$listvar['filename'].'</a>';
-
-		if ($isDir)
-		{
-			$listvar['logurl'] = $config->getURL($rep, $path.$file, 'log').$isDirString.$passRevString;
-		}
-		else
-		{
-			$listvar['logurl'] = $config->getURL($rep, $path.$file, 'log').$isDirString.createDifferentRevAndPegString($passrev, $peg);
-		}
-
-		if ($treeView)
-		{
-			$listvar['compare_box'] = '<input type="checkbox" name="compare[]" value="'.escape($path.$file).'@'.$passrev.'" onclick="enforceOnlyTwoChecked(this)" />';
-		}
-
-		if ($config->showLastModInListing())
-		{
-			$listvar['committime'] = $entry->committime;
-			$listvar['revision'] = $entry->rev;
-			$listvar['author'] = $entry->author;
-			$listvar['age'] = $entry->age;
-			$listvar['date'] = $entry->date;
-			$listvar['revurl'] = $config->getURL($rep, $path.$file, 'revision').$isDirString.createRevAndPegString($entry->rev, $peg ? $peg : $rev);
-		}
-
-		if ($rep->isDownloadAllowed($path.$file))
-		{
-			$downloadurl = $config->getURL($rep, $path.$file, 'dl').$isDirString.$downloadRevAndPeg;
-
-			if ($isDir)
-			{
-				$listvar['downloadurl'] = $downloadurl;
-				$listvar['downloadplainurl'] = '';
-			}
-			else
-			{
-				$listvar['downloadplainurl'] = $downloadurl;
-				$listvar['downloadurl'] = '';
-			}
-		}
-		else
-		{
-			$listvar['downloadplainurl'] = '';
-			$listvar['downloadurl'] = '';
-		}
-
-		if ($rep->isRssEnabled())
-		{
-			// RSS should always point to the latest revision, so don't include rev
-			$listvar['rssurl'] = $config->getURL($rep, $path.$file, 'rss').$isDirString.createRevAndPegString('', $peg);
-		}
-
-		$loop++;
-		$index++;
-		$last_index = $index;
-	}
-
-	return $listing;
-}
-
 function showTreeDir($svnrep, $path, $rev, $peg, $listing)
 {
 	global $vars, $config;
-
-	if ($config->showLoadAllRepos())
-	{
-		$vars['compare_box'] = ''; // Set blank once in case tree view is not enabled.
-		return showAllDirFiles($svnrep, $path, $rev, $peg, $listing, 0, $config->treeView);
-	}
 
 	$subs = explode('/', $path);
 
@@ -449,9 +266,15 @@ function showTreeDir($svnrep, $path, $rev, $peg, $listing)
 	// both values needed to be different in some environments in the past for some unkown reason.
 	//
 	// https://github.com/websvnphp/websvn/issues/146#issuecomment-913353366
+	//
+	// The walk always starts at the repository root ("$level = 0") so that "showDirFiles" recurses
+	// down through every ancestor directory of the one being browsed, rendering a tree row for each
+	// of them. Starting later, directly at the target directory, was tried to work around denied
+	// ancestors aborting the walk, but that also meant no ancestor was ever rendered as part of the
+	// tree. "showDirFiles" itself now tolerates a denied ancestor by recursing into it regardless of
+	// access, only skipping the row for the denied directory itself.
 	$limit = count($subs) - 2;
-	$level = $limit;
-	$level = $level <= 0 ? 0 : $level;
+	$level = 0;
 
 	for ($n = 0; $n < $limit; $n++)
 	{
@@ -621,7 +444,7 @@ if ($config->multiViews)
 }
 else
 {
-	$vars['compare_form'] .= '<input type="hidden" name="repname" value="'.$repname.'" />';
+	$vars['compare_form'] .= '<input type="hidden" name="repname" value="'.escape($repname).'" />';
 }
 
 $vars['compare_submit'] = '<input type="submit" value="'.$lang['COMPAREPATHS'].'" />';
@@ -629,7 +452,6 @@ $vars['compare_endform'] = '</form>';
 
 $vars['showlastmod'] = $config->showLastModInListing();
 
-$vars['loadalldir'] = $config->showLoadAllRepos();
 $listing = showTreeDir($svnrep, $path, $rev, $peg, array());
 
 if (!$rep->hasReadAccess($path))
@@ -639,4 +461,4 @@ if (!$rep->hasReadAccess($path))
 }
 
 $vars['restricted'] = !$rep->hasReadAccess($path, false);
-renderTemplate('directory', $path);
+renderTemplate('directory');

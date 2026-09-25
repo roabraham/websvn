@@ -29,13 +29,20 @@ function collapseAllGroups()
     }
 }
 
-$("table.collapsible thead").find("th").on("click", function()
+document.querySelectorAll("table.collapsible thead th").forEach(function(th)
 {
-    let oldClass = $(this).get(0).className;
-    let newClass = (oldClass == 'open') ? 'closed' : 'open';
+    th.addEventListener("click", function(e)
+    {
+        if (e.target.closest("a"))
+        {
+            return; // let the link navigate; don't toggle the diff too
+        }
 
-    $(this).get(0).className = newClass;
-    $(this).closest("table").find("tbody").toggle();
+        th.className = (th.className == 'open') ? 'closed' : 'open';
+
+        let tbody = th.closest("table").querySelector("tbody");
+        tbody.style.display = (tbody.style.display == 'none') ? '' : 'none';
+    });
 });
 
 /**

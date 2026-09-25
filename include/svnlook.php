@@ -533,11 +533,11 @@ function encodePath($uri) {
 
 	// Correct for Window share names
 	if ($config->serverIsWindows) {
-		if (substr($uri, 0, 2) == '//') {
+		if (str_starts_with($uri, '//')) {
 			$uri = '\\'.substr($uri, 2, strlen($uri));
 		}
 
-		if (substr($uri, 0, 10) == 'file://///' ) {
+		if (str_starts_with($uri, 'file://///')) {
 			$uri = 'file:///\\'.substr($uri, 10, strlen($uri));
 		}
 	}
@@ -876,55 +876,6 @@ class SVNRepository {
 
 	// }}}
 
-	// {{{ listReadmeContents
-	//
-	// Parse the README.md or readme.md file
-	function listReadmeContents($path, $rev = 0, $peg = '') {
-		global $config;
-
-		$file = "README.md";
-
-		if ($this->isFile($path.$file) != True)
-		{
-			$file = "readme.md";
-		}
-
-		if ($this->isFile($path.$file) != True)
-		{
-			return;
-		}
-
-		if (!$config->getUseParsedown())
-		{
-			return;
-		}
-
-		// Autoloader handles most of the time
-		if (!defined('USE_AUTOLOADER')) {
-			require_once $config->getParsedownScript();
-		}
-
-		$mdParser = new Parsedown();
-		$cmd = $this->svnCommandString('cat', $path.$file, $rev, $peg);
-
-		if (!($result = popenCommand($cmd, 'r')))
-		{
-			return;
-		}
-
-		echo('<div id="wrap">');
-		while (!feof($result))
-		{
-			$line = fgets($result, 1024);
-			echo $mdParser->text($line);
-		}
-		echo('</div>');
-		pclose($result);
-
-	}
-
-	// }}}
-
 	// {{{ getBlameDetails
 	//
 	// Dump the blame content of a file to the given filename
@@ -1091,7 +1042,7 @@ class SVNRepository {
 	// {{{ getList
 
 	function getList($path, $rev = 0, $peg = '') {
-		global $config, $curList;
+		global $curList;
 
 		// Since directories returned by svn log don't have trailing slashes (:-(), we need to remove
 		// the trailing slash from the path for comparison purposes
@@ -1112,15 +1063,9 @@ class SVNRepository {
 				$rev = $headlog->entries[0]->rev;
 		}
 
-		if ($config->showLoadAllRepos()) {
-			$cmd = $this->svnCommandString('list -R --xml', $path, $rev, $peg);
-			$this->_xmlParseCmdOutput($cmd, 'listStartElement', 'listEndElement', 'listCharacterData');
-		}
-		else {
-			$cmd = $this->svnCommandString('list --xml', $path, $rev, $peg);
-			$this->_xmlParseCmdOutput($cmd, 'listStartElement', 'listEndElement', 'listCharacterData');
-			usort($curList->entries, '_listSort');
-		}
+		$cmd = $this->svnCommandString('list --xml', $path, $rev, $peg);
+		$this->_xmlParseCmdOutput($cmd, 'listStartElement', 'listEndElement', 'listCharacterData');
+		usort($curList->entries, '_listSort');
 
 		return $curList;
 	}
@@ -1198,7 +1143,7 @@ class SVNRepository {
 						$pos = strrpos($modpath, '/');
 						$modpath = substr($modpath, 0, $pos + 1);
 					}
-					if (strlen($modpath) == 0 || substr($modpath, -1) !== '/') {
+					if (strlen($modpath) == 0 || !str_ends_with($modpath, '/')) {
 						$modpath .= '/';
 					}
 					//compare with current precise path
@@ -1206,7 +1151,7 @@ class SVNRepository {
 						$precisePath = $modpath;
 					} else {
 						$equalPart = _equalPart($precisePath, $modpath);
-						if (substr($equalPart, -1) !== '/') {
+						if (!str_ends_with($equalPart, '/')) {
 							$pos = strrpos($equalPart, '/');
 							$equalPart = substr($equalPart, 0, $pos + 1);
 						}

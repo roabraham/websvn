@@ -182,17 +182,6 @@ $config->addTemplatePath($locwebsvnreal.'/templates/Elegant/');
 // $config->setSortOrder('asc');
 // $config->setSortOrder('desc');
 
-// By default, WebSVN loads parent path directories and then on user click other,
-// This options loads the entire directory in one go and allows to browse without delay.
-// By default all will be collapsed to root directory and can be expanded.
-// The performance will be impacted as it takes time to load up all the things in the
-// repository. Once loaded directory exapansion is instantaneous.
-// The alphabetical order is applied to all directory and files.
-// This means that grouping of all dirs together and all files together is NOT supported currently!
-// The files and directories are shown as is with a mixture of files and folders.
-
-// $config->setLoadAllRepos(true);
-
 // By default, WebSVN displays the information of the last modification
 // (revision, age and author) for each repository in an extra column.
 // To disable that uncomment this line.
@@ -256,12 +245,22 @@ $config->addTemplatePath($locwebsvnreal.'/templates/Elegant/');
 // to the WebSVN (or browse) directory as you have for Subversion itself. More information can be
 // found in install.txt
 
-// $config->useAccessFile('/path/to/accessfile'); // Global access file
+// $config->setAccessFile('/path/to/accessfile'); // Global access file
 
 // You may also specify a per repository access file by uncommenting and copying the following
 // line as necessary. Use the convention 'groupname.myrep' if your repository is in a group.
 
-// $config->useAccessFile('/path/to/accessfile', 'myrep'); // Access file for myrep
+// $config->setAccessFile('/path/to/accessfile', 'myrep'); // Access file for myrep
+
+// If your Subversion setup uses mod_authz_svn's "AuthzForceUsernameCase" directive to fold the
+// authenticated username's case before checking it against the access file, uncomment one of the
+// following lines to apply the same conversion in WebSVN. mod_authz_svn only folds the case for
+// its own authorization decision; the username WebSVN receives (e.g. via REMOTE_USER) is always
+// unconverted, so without this WebSVN's access checks won't match entries in an access file that
+// assumes case-folded usernames.
+
+// $config->setAuthzUsernameCase('lower');
+// $config->setAuthzUsernameCase('upper');
 
 // Uncomment this line if you want to prevent search bots to index the WebSVN pages.
 
@@ -424,18 +423,6 @@ $config->setMinDownloadLevel(2);
 // $extGeshi['pascal'] = array('p', 'pas');
 //
 // Note that extensions are case sensitive.
-
-// }}}
-
-// {{{ Markdown Render
-
-// Uncomment this line if you want to enable Markdown Rendering of README.md or readme.md file in the path.
-// You will need the Parsedown.php (https://github.com/erusev/parsedown) library for this to work.
-// This will look for README.md or readme.md file on the path and render it.
-// The name of README file isn't configurable for now to simply follow GitHub's conventions.
-
-// $config->useParsedown();
-// $config->setParsedownPath('/usr/share/php/Parsedown/'); // optional. Use if you have Parsedown installed without PEAR/Composer
 
 // }}}
 
